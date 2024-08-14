@@ -1,9 +1,11 @@
-import express from 'express'
+import express, { json } from 'express'
 import playwriting from "playwright"
 import { chromium } from "playwright"
 import readline from "readline"
 import cron from 'node-cron';
 import nodemailer from 'nodemailer'
+import chatgptMessage from './utils/chatGpt.js';
+
 let mostRecentItems=[]
 
 const shops = [
@@ -56,6 +58,7 @@ app.get('/getProducts',async(req,res)=>{
 })
 
 
+
 const getOffersPD=async()=>{
     const browser = await chromium.launch();
     const context = await browser.newContext({
@@ -71,8 +74,8 @@ const getOffersPD=async()=>{
                     name:item.querySelector('.thread-title')?.textContent || 'no disponible',
                     discount:item.querySelector('.size--fromW3-xl.text--color-charcoal')?.textContent || 'no disponible',
                     price :item.querySelector('.threadItemCard-price')?.textContent || 'no disponible',
-                    realName:item.querySelector('.thread-title')?.textContent.split(':')[1] || 'no disponible',
                     shop: item.querySelector('.thread-title')?.textContent.includes(':')?item.querySelector('.thread-title')?.textContent.split(':')[0]: 'no disponible',
+                    cupon :item.querySelector('[data-t="copyVoucherCode"]')?.value || 'no disponible',
                 }
             })
            
@@ -81,30 +84,45 @@ const getOffersPD=async()=>{
     const idsInMostRecentItems = new Set(mostRecentItems.map(item => item.id));
     const filteredContent = content.filter(item => !idsInMostRecentItems.has(item.id));
     if(filteredContent && filteredContent.length>0){
+        filteredContent.forEach(async(item)=>{
 
+            if (item.price === 'no disponible' || item.cupon !== 'no disponible') {
+                item.type='descuento'
+                item.realName = item.name
+            }
+
+            let nameFormated = {name:item.name,type:'descuento'}
+            if (item.type!=='descuento') {
+                nameFormated= await chatgptMessage(item.name)
+                item.realName = JSON.parse(nameFormated).name
+                item.type = JSON.parse(nameFormated).type
+            }
+            
+            const finalResults= await compareProducts(item)
+
+            if (finalResults && finalResults.type==='producto') {
+                const discount=parseFloat(finalResults.discount.replace(/[^0-9.-]+/g, ''));
+                if (finalResults.realDiscount>35 || discount<-50) {
+                    sendMail(item)
+                }
+            }
+            if (finalResults && finalResults.type==='descuento') {
+                    sendMail(item)
+            }
+        })
         
     }
     else{
         console.log('no hay nuevos productos')
     }
 
-    console.log(filteredContent)
-
-        filteredContent.forEach(async(item)=>{
-            compareProducts(item)
-            if (item.discount) {
-                const discountPercentaje=parseFloat(item.discount.replace(/[^0-9.-]+/g, ''));
-                if (discountPercentaje<-30) {
-                    // sendMail(item)
-                }
-            }
-        })
+       
 
     mostRecentItems= content
 
 }
 
-cron.schedule('* * * * *', () => {
+cron.schedule('*/5 * * * *', () => {
     console.log('Ejecutando tarea periódica...');
     getOffersPD()
   });
@@ -113,19 +131,22 @@ const compareProducts=async(item)=>{
     const product = item.realName
     const results= await getPrices(product,2)
     const name= item.realName
-    const priceWithDiscount=item.price
-    const realPrices=results.map(result=>{
-        return{ name:result.name,price:result.price}
+    const priceWithDiscount=parseFloat(item.price.replace(/[^0-9.-]+/g, ''))
+    const others=results.map(result=>{
+        return{ name:result.name,price:result.price,shop:result.shop}
      })
-     const originalPrice=results[0].price
+     const originalPrice = parseFloat(results[0].price.replace(/[^0-9.-]+/g, ''))
     const realDiscount = ((originalPrice - priceWithDiscount) / originalPrice) * 100;
 
-    console.log({
+   return{
         name,
+        discount: item.discount,
         priceWithDiscount,
-        realPrices,
-        realDiscount
-    })
+        others,
+        originalPrice,
+        realDiscount,
+        type: item.type
+    }
 }
 
 const sendMail=async(item)=>{
@@ -157,7 +178,6 @@ const sendMail=async(item)=>{
     console.log(error)
     }
 }
-
 
 const checkLowestPrice = (result) => {
     // Asegúrate de convertir precios a números si son cadenas
@@ -199,16 +219,4 @@ const getPrices = async (answer,resultsPerShop) => {
 };
 
 app.listen(port, () => {
-   
 })
-
-
-// const rl = readline.createInterface({
-//     input: process.stdin,
-//     output: process.stdout
-//   });
-  
-//   rl.question('Ingresa un producto para buscar?', (answer) => {
-//     getPrices(answer)
-//     rl.close();
-//   });
