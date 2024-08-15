@@ -1,5 +1,7 @@
 # Dependencias
 /node_modules
+/.wwebjs_auth
+/.wwebjs_cache
 
 # Archivos de configuración
 .env

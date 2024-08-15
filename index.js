@@ -5,6 +5,7 @@ import readline from "readline"
 import cron from 'node-cron';
 import nodemailer from 'nodemailer'
 import chatgptMessage from './utils/chatGpt.js';
+import sendMessage from './utils/sendWhatsapp.cjs';
 
 let mostRecentItems=[]
 
@@ -13,7 +14,7 @@ const shops = [
         shop: 'Mercado libre',
         getInfo: async (page, answer) => {
             const path = 'https://listado.mercadolibre.com.mx/' + answer.replace(/ /g, '-');
-            await page.goto(path);
+            await page.goto(path, {timeout:60000});
 
             const list = await page.evaluate((path) => {
                 return Array.from(document.querySelectorAll('.ui-search-layout__item')).map((item) => ({
@@ -31,7 +32,7 @@ const shops = [
         shop: 'Amazon',
         getInfo: async (page, answer) => {
             const path = 'https://www.amazon.com.mx/s?k=' + answer.replace(/ /g, '+');
-            await page.goto(path);
+            await page.goto(path, {timeout:60000});
 
             const list = await page.$$eval('[data-component-type="s-search-result"]', (items, path) => {
 
@@ -57,18 +58,34 @@ app.get('/getProducts',async(req,res)=>{
     res.send(list)
 })
 
+function formatMessage(item, finalResults) {
+    const name = item.name !== 'no disponible' ? `*${item.name}*` : '';
+    const discount = finalResults.discount !== 'no disponible' ? `con un descuento de *${finalResults.discount}*` : '';
+    const priceWithDiscount = finalResults.priceWithDiscount !== 'no disponible' ? `por solo *$${finalResults.priceWithDiscount}*` : '';
+    const realDiscount = finalResults.realDiscount !== 'no disponible' ? `\n\nDescuento real estimado de *${finalResults.realDiscount.toFixed(2)}%*` : '';
+    const cupon = finalResults.cupon !== 'no disponible' ? `con el cupón *${finalResults.cupon}*` : '';
+    const shop = finalResults.shop !== 'no disponible' ? `en ${finalResults.shop}` : '';
+    const path = finalResults.path !== 'no disponible' ? `\n\n${finalResults.path}%` : '';
+
+
+    let message = `${name} ${discount} ${priceWithDiscount} ${cupon} ${shop} ${realDiscount}`.trim();
+
+    return message;
+}
 
 
 const getOffersPD=async()=>{
+    try{
     const browser = await chromium.launch();
     const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     });
     const page = await context.newPage();
-    await page.goto('https://www.promodescuentos.com/nuevas');
+    await page.goto('https://www.promodescuentos.com/nuevas', {timeout:60000 });
     page.screenshot({path:'ss.png'})
     const content = await page.$$eval('.cept-thread-item', (items)=>{
             return items.slice(0,5).map((item)=>{
+                console.log('aaaaaaa',item.querySelector('.thread-image')?.src)
                 return {
                     id:item.id,
                     name:item.querySelector('.thread-title')?.textContent || 'no disponible',
@@ -76,6 +93,8 @@ const getOffersPD=async()=>{
                     price :item.querySelector('.threadItemCard-price')?.textContent || 'no disponible',
                     shop: item.querySelector('.thread-title')?.textContent.includes(':')?item.querySelector('.thread-title')?.textContent.split(':')[0]: 'no disponible',
                     cupon :item.querySelector('[data-t="copyVoucherCode"]')?.value || 'no disponible',
+                    image: item.querySelector('.thread-image')?.src?.replace('300x300','768x768') || null,
+                    path: item.querySelector('.width--all-12.button--shape-circle')?.href || 'no disponible'
                 }
             })
            
@@ -102,13 +121,18 @@ const getOffersPD=async()=>{
 
             if (finalResults && finalResults.type==='producto') {
                 const discount=parseFloat(finalResults.discount.replace(/[^0-9.-]+/g, ''));
-                if (finalResults.realDiscount>35 || discount<-50) {
+                if (finalResults.realDiscount>35 || discount<-40) {
                     sendMail(item)
+                    const message = formatMessage(item, finalResults);
+                    sendMessage('525621530248', message, item.image);
                 }
             }
             if (finalResults && finalResults.type==='descuento') {
                     sendMail(item)
+                    const message = formatMessage(item, finalResults);
+                    sendMessage('525621530248', message, item.image);
             }
+            
         })
         
     }
@@ -119,15 +143,21 @@ const getOffersPD=async()=>{
        
 
     mostRecentItems= content
+}catch(error){
+    console.log(error)
+    await new Promise(resolve => setTimeout(resolve, 5000));
+        return getOffersPD();  // Reintentar la función
+}
 
 }
 
-cron.schedule('*/5 * * * *', () => {
+cron.schedule('*/1 * * * *', () => {
     console.log('Ejecutando tarea periódica...');
     getOffersPD()
   });
 
 const compareProducts=async(item)=>{
+    console.log(item.path)
     const product = item.realName
     const results= await getPrices(product,2)
     const name= item.realName
@@ -135,7 +165,7 @@ const compareProducts=async(item)=>{
     const others=results.map(result=>{
         return{ name:result.name,price:result.price,shop:result.shop}
      })
-     const originalPrice = parseFloat(results[0].price.replace(/[^0-9.-]+/g, ''))
+     const originalPrice = parseFloat(results[0]?.price?.replace(/[^0-9.-]+/g, ''))
     const realDiscount = ((originalPrice - priceWithDiscount) / originalPrice) * 100;
 
    return{
@@ -145,7 +175,11 @@ const compareProducts=async(item)=>{
         others,
         originalPrice,
         realDiscount,
-        type: item.type
+        type: item.type,
+        shop: item.shop,
+        img: item?.image?.replace('300x300','768x768'),
+        cupon: item.cupon,
+        path: item.path
     }
 }
 

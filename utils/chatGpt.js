@@ -13,7 +13,7 @@ const chatgptMessage = async (message) => {
       messages: [
         {
           role: "system",
-          content: "dame un JSON con 2 props el type con valor producto si habla de un producto en especifico y la prop name que contenga la informacion que sirva para realizar la busqueda del producto en amazon. Si no identificas un producto y se trata de un descuento en una tienda como doto,amazon,walmart etc.. dame un JSON con el tipo descuento y el nombre de la oferta",
+          content: "dame un JSON valido con 2 props el type con valor producto si habla de un producto en especifico y la prop name que contenga solo la marca y modelo. Si no identificas un producto y se trata de un descuento en una tienda como doto,amazon,walmart etc.. dame un JSON valido con el tipo descuento y el nombre de la oferta",
         },
         {
           role: "user",
