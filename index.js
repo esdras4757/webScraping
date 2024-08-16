@@ -10,31 +10,31 @@ import sendMessage from "./utils/sendWhatsapp.cjs";
 let mostRecentItems = [];
 
 const shops = [
-    {
-        shop: "GoogleCompare",
-        getInfo: async (page, answer) => {
-          const path =
-            // "https://listado.mercadolibre.com.mx/" + answer.replace(/ /g, "-");
-            `https://www.google.com/search?tbm=shop&hl=en-US&q=` + answer.replace(/ /g, "+").trim();
-          await page.goto(path, { timeout: 60000 });
+    // {
+    //     shop: "GoogleCompare",
+    //     getInfo: async (page, answer) => {
+    //       const path =
+    //         // "https://listado.mercadolibre.com.mx/" + answer.replace(/ /g, "-");
+    //         `https://www.google.com/search?tbm=shop&hl=es-419&psb=1&ved=2ahUKEwj0_d_zzviHAxV8UUgAHdJ7GzEQu-kFegQIABAJ&q=${answer.replace(/ /g, "+")}&oq=${answer.replace(/ /g, "+")}&gs_lp=Egtwcm9kdWN0cy1jYyIHcnl6ZW4gNUgAUABYAHAAeACQAQCYAQCgAQCqAQC4AQPIAQCYAgCgAgCYAwCSBwCgBwA&sclient=products-cc#spd=3945146843610265752`;
+    //       await page.goto(path, { timeout: 60000 });
     
-          const list = await page.evaluate((path) => {
-            return Array.from(
-              document.querySelectorAll(".sh-dgr__grid-result")
-            ).map((item) => ({
-              shop: "GoogleCompare",
-              name:
-                item.querySelector(".tAxDx")?.textContent || null,
-              price:
-                item.querySelector(".OFFNJ")?.textContent ||
-                null,
-              path: item.querySelector(".shntl")?.href || null,
-            }));
-          }, path); // Pasar el path como argumento
+    //       const list = await page.evaluate((path) => {
+    //         return Array.from(
+    //           document.querySelectorAll(".sh-dgr__grid-result")
+    //         ).map((item) => ({
+    //           shop: "GoogleCompare",
+    //           name:
+    //             item.querySelector(".tAxDx")?.textContent || null,
+    //           price:
+    //             item.querySelector(".OFFNJ")?.textContent ||
+    //             null,
+    //           path: item.querySelector(".shntl")?.href || null,
+    //         }));
+    //       }, path); // Pasar el path como argumento
     
-          return list;
-        },
-      },
+    //       return list;
+    //     },
+    //   },
   {
     shop: "Mercado libre",
     getInfo: async (page, answer) => {
@@ -95,9 +95,9 @@ app.get("/getProducts", async (req, res) => {
 });
 
 function formatMessage(item, finalResults) {
-  const name = item.name !== null && item.name !== undefined? `*${item.name}*` : "";
+  const name = item.name != null && item.name !== undefined? `*${item.name}*` : "";
   const discount =
-    finalResults.discount !== null && finalResults.discount !== undefined && finalResults.discount !== NaN
+    finalResults.discount != null && finalResults.discount !== undefined && finalResults.discount !== NaN
       ? `con un descuento de *${finalResults.discount}*`
       : "";
   const priceWithDiscount =
@@ -105,14 +105,14 @@ function formatMessage(item, finalResults) {
       ? `por solo *$${finalResults.priceWithDiscount}*`
       : "";
   const realDiscount =
-    finalResults.realDiscount !== null && finalResults.realDiscount !== undefined && finalResults.realDiscount !== NaN
+    finalResults.realDiscount != null && finalResults.realDiscount !== undefined && finalResults.realDiscount !== NaN
       ? `\n\nDescuento real estimado de *${finalResults.realDiscount?.toFixed(
           2
         )}%*`
       : "";
   const cupon =
-    finalResults.cupon !== null && finalResults.cupon !== undefined ? `con el cupón *${finalResults.cupon}*` : "";
-  const shop = finalResults.shop !== null && finalResults.shop !== undefined ? `en ${finalResults.shop}` : "";
+    finalResults.cupon != null && finalResults.cupon !== undefined ? `con el cupón *${finalResults.cupon}*` : "";
+  const shop = finalResults.shop != null && finalResults.shop !== undefined ? `en ${finalResults.shop}` : "";
   const path = finalResults.path !== null && finalResults.path !== undefined ? `\n\n${finalResults.path}%` : "";
 
   let message =
@@ -123,7 +123,7 @@ function formatMessage(item, finalResults) {
 
 const getOffersPD = async () => {
   try {
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({ headless: false });
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
@@ -132,7 +132,7 @@ const getOffersPD = async () => {
     await page.goto("https://www.promodescuentos.com/nuevas", {
       timeout: 60000,
     });
-    page.screenshot({ path: "ss.png" });
+    await page.screenshot({ path: "ss.png" });
     const content = await page.$$eval(".cept-thread-item", (items) => {
       return items.slice(0, 4).map((item) => {
         return {
@@ -190,7 +190,7 @@ const getOffersPD = async () => {
               "cupon:" +
               item.cupon
           );
-
+          console.log(nameFormated, "nameFormated");
           item.name = JSON.parse(nameFormated).name;
           item.type = JSON.parse(nameFormated).type;
           item.realName = JSON.parse(nameFormated).name;
@@ -229,12 +229,15 @@ const getOffersPD = async () => {
         }
       });
     } else {
+    
       console.log("no hay nuevos productos");
     }
 
     mostRecentItems = content;
+    await browser.close();
   } catch (error) {
     console.log(error);
+    await browser.close();
     await new Promise((resolve) => setTimeout(resolve, 5000));
     return getOffersPD(); // Reintentar la función
   }
@@ -248,7 +251,6 @@ cron.schedule("*/1 * * * *", () => {
 const compareProducts = async (item) => {
   const product = item.realName;
   const results = await getPrices(product, 2);
-
   console.log(results, "results");
   const name = item.realName;
   const priceWithDiscount = item?.price? parseFloat(item?.price?.replace(/[^0-9.-]+/g, "")): null;
@@ -325,23 +327,23 @@ const checkLowestPrice = (result) => {
 };
 
 const getPrices = async (answer, resultsPerShop) => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch( { headless: false } );
   const result = [];
 
-//   // Usa map y Promise.all para manejar correctamente las promesas
-//   await Promise.all(
-//     shops.map(async (shop) => {
-//       const page = await browser.newPage();
-//       const info = await shop.getInfo(page, answer);
-//       result.push(...info.slice(0, resultsPerShop - 1)); // Usa spread operator para agregar elementos al arreglo
-//       await page.close(); // Asegúrate de cerrar la página después de usarla
-//     })
-//   );
+  // Usa map y Promise.all para manejar correctamente las promesas
+  await Promise.all(
+    shops.map(async (shop) => {
+      const page = await browser.newPage({ userAgent: "Mozilla/5.0" });
+      const info = await shop.getInfo(page, answer);
+      result.push(...info.slice(0, resultsPerShop - 1)); // Usa spread operator para agregar elementos al arreglo
+      await page.close(); // Asegúrate de cerrar la página después de usarla
+    })
+  );
 
-    const page = await browser.newPage();
-    const info = await shops[0].getInfo(page, answer);
-    result.push(...info.slice(0, resultsPerShop - 1)); // Usa spread operator para agregar elementos al arreglo
-    await page.close(); // Asegúrate de cerrar la página después de usarla
+    // const page = await browser.newPage();
+    // const info = await shops[0].getInfo(page, answer);
+    // result.push(...info.slice(0, resultsPerShop - 1)); // Usa spread operator para agregar elementos al arreglo
+    // await page.close(); // Asegúrate de cerrar la página después de usarla
 
   await browser.close();
 
