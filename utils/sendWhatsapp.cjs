@@ -77,7 +77,7 @@ async function sendMessage(number, message, img) {
 
         // Envía el mensaje con la imagen
         await client.sendMessage(chatId, media, { caption: message });
-        console.log("Mensaje enviado con éxito a " + number);
+        console.log("Whatsapp enviado con éxito ");
 
     } catch (err) {
         console.error('Error al enviar el mensaje: ', err);
