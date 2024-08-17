@@ -113,17 +113,20 @@ function formatMessage(item, finalResults) {
   const cupon =
     finalResults.cupon != null && finalResults.cupon !== undefined ? `con el cupón *${finalResults.cupon}*` : "";
   const shop = finalResults.shop != null && finalResults.shop !== undefined ? `en ${finalResults.shop}` : "";
-  const path = finalResults.path !== null && finalResults.path !== undefined ? `\n\n${finalResults.path}%` : "";
+
+  const path = finalResults.path !== null && finalResults.path !== undefined ? `\n\n${shop??'Tienda'}:\n${finalResults.path}` : "";
+  
+  const pathPD = finalResults.pathPD !== null && finalResults.pathPD !== undefined ? `\n\n${'Promodescuentos'}:\n${finalResults.pathPD}` : "";
 
   let message =
-    `${name} ${discount} ${priceWithDiscount} ${cupon} ${shop} ${realDiscount}`.trim();
+    `${name} ${discount} ${priceWithDiscount} ${cupon} ${shop} ${realDiscount} ${path} ${pathPD}`.trim();
 
   return message;
 }
 
 const getOffersPD = async () => {
   try {
-    const browser = await chromium.launch({ headless: false });
+    const browser = await chromium.launch( );
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
@@ -133,11 +136,26 @@ const getOffersPD = async () => {
       timeout: 60000,
     });
     await page.screenshot({ path: "ss.png" });
+    await page.pause()
     const content = await page.$$eval(".cept-thread-item", (items) => {
       return items.slice(0, 4).map((item) => {
+
+
+
+  const formattedText = item.querySelector(".thread-title")?.textContent
+  .toLowerCase()                  // Convertir a minúsculas
+  .replace(/[^\w\s-]/g, '')       // Eliminar signos de puntuación y caracteres especiales
+  .replace(/\s+/g, '-')           // Reemplazar espacios por guiones medios
+  .replace(/\d+/g, '')            // Eliminar caracteres numéricos
+  .replace(/-+/g, '-')            // Eliminar guiones repetidos
+  .replace(/^-|-$/g, '');  
+
+
+        console.log(formattedText, "formattedText");
         return {
           id: item.id,
           name: item.querySelector(".thread-title")?.textContent || null,
+          description: item.querySelector(".userHtml-content div")?.textContent || null,
           discount:
             item.querySelector(".size--fromW3-xl.text--color-charcoal")
               ?.textContent || null,
@@ -152,9 +170,8 @@ const getOffersPD = async () => {
             item
               .querySelector(".thread-image")
               ?.src?.replace("300x300", "768x768") || null,
-          path:
-            item.querySelector(".width--all-12.button--shape-circle")?.href ||
-            null,
+          path: item.id.split("_")[1]? 'https://www.promodescuentos.com/visit/homenew/' + item.id.split("_")[1]: null,
+          pathPD: 'https://www.promodescuentos.com/ofertas/' + formattedText + '-' + item.id.split("_")[1] || null,
         };
       });
     });
@@ -167,40 +184,12 @@ const getOffersPD = async () => {
     );
     if (filteredContent && filteredContent.length > 0) {
       filteredContent.forEach(async (item) => {
+        console.log(item, "item");
+        item.type = "producto";
         if (item.price === null || item.cupon !== null) {
           item.type = "descuento";
           item.realName = item.name;
         }
-
-        let nameFormated = { name: item.name, type: "descuento" };
-        if (item.type !== "descuento") {
-          nameFormated = await chatgptMessage(
-            ///formatea las propiedades del producto para que sean validas
-            item.name +
-              " " +
-              "descuento:" +
-              item.discount +
-              " " +
-              "$" +
-              item.price +
-              " " +
-              "shop:" +
-              item.shop +
-              " " +
-              "cupon:" +
-              item.cupon
-          );
-          console.log(nameFormated, "nameFormated");
-          item.name = JSON.parse(nameFormated).name;
-          item.type = JSON.parse(nameFormated).type;
-          item.realName = JSON.parse(nameFormated).name;
-          item.price = JSON.parse(nameFormated).precio;
-          item.discount = JSON.parse(nameFormated).discount;
-          item.shop = JSON.parse(nameFormated).shop;
-          item.cupon = JSON.parse(nameFormated).cupon;
-          item.nameforSearchInOtherShop = JSON.parse(nameFormated).nameforSearchInOtherShop;
-        }
-
 
         if (item.price === null) {
           item.type = "descuento";
@@ -209,16 +198,20 @@ const getOffersPD = async () => {
             return
         }
 
-        const finalResults = await compareProducts(item);
+        // const finalResults = await compareProducts(item);
+        const finalResults = item;
 
         if (finalResults && finalResults.type === "producto") {
           const discount = parseFloat(
             finalResults?.discount?.replace(/[^0-9.-]+/g, "")
           );
-          if (finalResults.realDiscount > 35 || discount < -40) {
+          if (discount <= -30) {
             sendMail(item);
             const message = formatMessage(item, finalResults);
             sendMessage("525621530248", message, item.image);
+          }
+          else{
+            console.log("el descuento no es mayor a 30%");
           }
         }
         
@@ -327,7 +320,7 @@ const checkLowestPrice = (result) => {
 };
 
 const getPrices = async (answer, resultsPerShop) => {
-  const browser = await chromium.launch( { headless: false } );
+  const browser = await chromium.launch( );
   const result = [];
 
   // Usa map y Promise.all para manejar correctamente las promesas
