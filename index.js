@@ -4,7 +4,6 @@ import { chromium } from "playwright";
 import readline from "readline";
 import cron from "node-cron";
 import nodemailer from "nodemailer";
-import chatgptMessage from "./utils/chatGpt.js";
 import sendMessage from "./utils/sendWhatsapp.cjs";
 
 let mostRecentItems = [];
