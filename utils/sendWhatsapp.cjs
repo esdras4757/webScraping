@@ -8,6 +8,7 @@ let isClientReady = false; // Variable para rastrear si el cliente está listo
 function initializeClient(item) {
     client = new Client({
         authStrategy: new LocalAuth(), // Guarda la sesión localmente
+        puppeteer: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox']}
     });
 
     // Genera el código QR para iniciar sesión por primera vez
