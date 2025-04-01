@@ -12,8 +12,9 @@ function initializeClient(item) {
     });
 
     // Genera el código QR para iniciar sesión por primera vez
-    client.on("qr", (qr) => {
+    client.on("qr", (qr, url) => {
         qrcode.generate(qr, { small: true });
+        console.log("Escanee el código QR con su teléfono: ", url);
     });
 
     client.on('disconnected', (reason) => {
