@@ -56,7 +56,7 @@ async function sendMessage(number, message, img) {
     try {
         // Convierte el número en el formato necesario
         const contacts = await client.getContacts();
-        const contact = contacts.find(({ name }) => name === "Yo");
+        const contact = contacts.find(({ number }) => number == "5215564978543");
         if (!contact) {
             throw new Error("Contact not found");
         }
@@ -77,8 +77,9 @@ async function sendMessage(number, message, img) {
         const media = new MessageMedia("image/jpeg", imageBase64);
 
         // Envía el mensaje con la imagen
-        await client.sendMessage(chatId, media, { caption: message });
-        console.log("Whatsapp enviado con éxito ");
+        const responsewp = await client.sendMessage(chatId, media, { caption: message });
+
+        console.log('Mensaje enviado con éxito a ' + number);
 
     } catch (err) {
         console.error('Error al enviar el mensaje: ', err);

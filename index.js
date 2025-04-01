@@ -9,31 +9,31 @@ import sendMessage from "./utils/sendWhatsapp.cjs";
 let mostRecentItems = [];
 
 const shops = [
-    // {
-    //     shop: "GoogleCompare",
-    //     getInfo: async (page, answer) => {
-    //       const path =
-    //         // "https://listado.mercadolibre.com.mx/" + answer.replace(/ /g, "-");
-    //         `https://www.google.com/search?tbm=shop&hl=es-419&psb=1&ved=2ahUKEwj0_d_zzviHAxV8UUgAHdJ7GzEQu-kFegQIABAJ&q=${answer.replace(/ /g, "+")}&oq=${answer.replace(/ /g, "+")}&gs_lp=Egtwcm9kdWN0cy1jYyIHcnl6ZW4gNUgAUABYAHAAeACQAQCYAQCgAQCqAQC4AQPIAQCYAgCgAgCYAwCSBwCgBwA&sclient=products-cc#spd=3945146843610265752`;
-    //       await page.goto(path, { timeout: 60000 });
-    
-    //       const list = await page.evaluate((path) => {
-    //         return Array.from(
-    //           document.querySelectorAll(".sh-dgr__grid-result")
-    //         ).map((item) => ({
-    //           shop: "GoogleCompare",
-    //           name:
-    //             item.querySelector(".tAxDx")?.textContent || null,
-    //           price:
-    //             item.querySelector(".OFFNJ")?.textContent ||
-    //             null,
-    //           path: item.querySelector(".shntl")?.href || null,
-    //         }));
-    //       }, path); // Pasar el path como argumento
-    
-    //       return list;
-    //     },
-    //   },
+  // {
+  //     shop: "GoogleCompare",
+  //     getInfo: async (page, answer) => {
+  //       const path =
+  //         // "https://listado.mercadolibre.com.mx/" + answer.replace(/ /g, "-");
+  //         `https://www.google.com/search?tbm=shop&hl=es-419&psb=1&ved=2ahUKEwj0_d_zzviHAxV8UUgAHdJ7GzEQu-kFegQIABAJ&q=${answer.replace(/ /g, "+")}&oq=${answer.replace(/ /g, "+")}&gs_lp=Egtwcm9kdWN0cy1jYyIHcnl6ZW4gNUgAUABYAHAAeACQAQCYAQCgAQCqAQC4AQPIAQCYAgCgAgCYAwCSBwCgBwA&sclient=products-cc#spd=3945146843610265752`;
+  //       await page.goto(path, { timeout: 60000 });
+
+  //       const list = await page.evaluate((path) => {
+  //         return Array.from(
+  //           document.querySelectorAll(".sh-dgr__grid-result")
+  //         ).map((item) => ({
+  //           shop: "GoogleCompare",
+  //           name:
+  //             item.querySelector(".tAxDx")?.textContent || null,
+  //           price:
+  //             item.querySelector(".OFFNJ")?.textContent ||
+  //             null,
+  //           path: item.querySelector(".shntl")?.href || null,
+  //         }));
+  //       }, path); // Pasar el path como argumento
+
+  //       return list;
+  //     },
+  //   },
   {
     shop: "Mercado libre",
     getInfo: async (page, answer) => {
@@ -94,28 +94,46 @@ app.get("/getProducts", async (req, res) => {
 });
 
 function formatMessage(item, finalResults) {
-  const name = item.name != null && item.name !== undefined? `*${item.name}*` : "";
+  const name =
+    item.name != null && item.name !== undefined ? `*${item.name}*` : "";
   const discount =
-    finalResults.discount != null && finalResults.discount !== undefined && finalResults.discount !== NaN
+    finalResults.discount != null &&
+    finalResults.discount !== undefined &&
+    finalResults.discount !== NaN
       ? `con un descuento de *${finalResults.discount}*`
       : "";
   const priceWithDiscount =
-    finalResults.priceWithDiscount !== null && finalResults.priceWithDiscount !== undefined && finalResults.priceWithDiscount !== NaN
+    finalResults.priceWithDiscount !== null &&
+    finalResults.priceWithDiscount !== undefined &&
+    finalResults.priceWithDiscount !== NaN
       ? `por solo *$${finalResults.priceWithDiscount}*`
       : "";
   const realDiscount =
-    finalResults.realDiscount != null && finalResults.realDiscount !== undefined && finalResults.realDiscount !== NaN
+    finalResults.realDiscount != null &&
+    finalResults.realDiscount !== undefined &&
+    finalResults.realDiscount !== NaN
       ? `\n\nDescuento real estimado de *${finalResults.realDiscount?.toFixed(
           2
         )}%*`
       : "";
   const cupon =
-    finalResults.cupon != null && finalResults.cupon !== undefined ? `con el cupón *${finalResults.cupon}*` : "";
-  const shop = finalResults.shop != null && finalResults.shop !== undefined ? `en ${finalResults.shop}` : "";
+    finalResults.cupon != null && finalResults.cupon !== undefined
+      ? `con el cupón *${finalResults.cupon}*`
+      : "";
+  const shop =
+    finalResults.shop != null && finalResults.shop !== undefined
+      ? `en ${finalResults.shop}`
+      : "";
 
-  const path = finalResults.path !== null && finalResults.path !== undefined ? `\n\n${shop??'Tienda'}:\n${finalResults.path}` : "";
-  
-  const pathPD = finalResults.pathPD !== null && finalResults.pathPD !== undefined ? `\n\n${'Promodescuentos'}:\n${finalResults.pathPD}` : "";
+  const path =
+    finalResults.path !== null && finalResults.path !== undefined
+      ? `\n\n${shop ?? "Tienda"}:\n${finalResults.path}`
+      : "";
+
+  const pathPD =
+    finalResults.pathPD !== null && finalResults.pathPD !== undefined
+      ? `\n\n${"Promodescuentos"}:\n${finalResults.pathPD}`
+      : "";
 
   let message =
     `${name} ${discount} ${priceWithDiscount} ${cupon} ${shop} ${realDiscount} ${path} ${pathPD}`.trim();
@@ -125,7 +143,7 @@ function formatMessage(item, finalResults) {
 
 const getOffersPD = async () => {
   try {
-    const browser = await chromium.launch( );
+    const browser = await chromium.launch();
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
@@ -135,31 +153,29 @@ const getOffersPD = async () => {
       timeout: 60000,
     });
     await page.screenshot({ path: "ss.png" });
-    await page.pause()
+    await page.pause();
     const content = await page.$$eval(".cept-thread-item", (items) => {
       return items.slice(0, 4).map((item) => {
+        const formattedText = item
+          .querySelector(".thread-title")
+          ?.textContent.toLowerCase() // Convertir a minúsculas
+          .replace(/[^\w\s-]/g, "") // Eliminar signos de puntuación y caracteres especiales
+          .replace(/\s+/g, "-") // Reemplazar espacios por guiones medios
+          .replace(/\d+/g, "") // Eliminar caracteres numéricos
+          .replace(/-+/g, "-") // Eliminar guiones repetidos
+          .replace(/^-|-$/g, "");
 
-
-
-  const formattedText = item.querySelector(".thread-title")?.textContent
-  .toLowerCase()                  // Convertir a minúsculas
-  .replace(/[^\w\s-]/g, '')       // Eliminar signos de puntuación y caracteres especiales
-  .replace(/\s+/g, '-')           // Reemplazar espacios por guiones medios
-  .replace(/\d+/g, '')            // Eliminar caracteres numéricos
-  .replace(/-+/g, '-')            // Eliminar guiones repetidos
-  .replace(/^-|-$/g, '');  
-
-
-        console.log(formattedText, "formattedText");
+        // console.log(formattedText, "formattedText");
         return {
           id: item.id,
           name: item.querySelector(".thread-title")?.textContent || null,
-          description: item.querySelector(".userHtml-content div")?.textContent || null,
+          description:
+            item.querySelector(".userHtml-content div")?.textContent || null,
           discount:
-            item.querySelector(".size--fromW3-xl.text--color-charcoal")
+            item.querySelector(".textBadge")
               ?.textContent || null,
           price:
-            item.querySelector(".threadItemCard-price")?.textContent || null,
+            item.querySelector(".thread-price")?.textContent || null,
           shop: item.querySelector(".thread-title")?.textContent.includes(":")
             ? item.querySelector(".thread-title")?.textContent.split(":")[0]
             : null,
@@ -169,8 +185,15 @@ const getOffersPD = async () => {
             item
               .querySelector(".thread-image")
               ?.src?.replace("300x300", "768x768") || null,
-          path: item.id.split("_")[1]? 'https://www.promodescuentos.com/visit/homenew/' + item.id.split("_")[1]: null,
-          pathPD: 'https://www.promodescuentos.com/ofertas/' + formattedText + '-' + item.id.split("_")[1] || null,
+          path: item.id.split("_")[1]
+            ? "https://www.promodescuentos.com/visit/homenew/" +
+              item.id.split("_")[1]
+            : null,
+          pathPD:
+            "https://www.promodescuentos.com/ofertas/" +
+              formattedText +
+              "-" +
+              item.id.split("_")[1] || null,
         };
       });
     });
@@ -194,7 +217,7 @@ const getOffersPD = async () => {
           item.type = "descuento";
           const message = formatMessage(item, item);
           sendMessage("525621530248", message, item.image);
-            return
+          return;
         }
 
         // const finalResults = await compareProducts(item);
@@ -204,24 +227,22 @@ const getOffersPD = async () => {
           const discount = parseFloat(
             finalResults?.discount?.replace(/[^0-9.-]+/g, "")
           );
-          if (discount <= -30) {
+          if (discount <= -35) {
             sendMail(item);
             const message = formatMessage(item, finalResults);
-            sendMessage("525621530248", message, item.image);
-          }
-          else{
-            console.log("el descuento no es mayor a 30%");
+            sendMessage("525564978543", message, item.image);
+          } else {
+            console.log("el descuento no es mayor a 35%");
           }
         }
-        
-        if (finalResults && finalResults.type === "descuento") {
-          sendMail(item);
-          const message = formatMessage(item, finalResults);
-          sendMessage("525621530248", message, item.image);
-        }
+
+        // if (finalResults && finalResults.type === "descuento") {
+        //   sendMail(item);
+        //   const message = formatMessage(item, finalResults);
+        //   sendMessage("525564978543", message, item.image);
+        // }
       });
     } else {
-    
       console.log("no hay nuevos productos");
     }
 
@@ -235,7 +256,7 @@ const getOffersPD = async () => {
   }
 };
 
-cron.schedule("*/1 * * * *", () => {
+cron.schedule("*/5 * * * *", () => {
   console.log("Ejecutando tarea periódica...");
   getOffersPD();
 });
@@ -245,7 +266,9 @@ const compareProducts = async (item) => {
   const results = await getPrices(product, 2);
   console.log(results, "results");
   const name = item.realName;
-  const priceWithDiscount = item?.price? parseFloat(item?.price?.replace(/[^0-9.-]+/g, "")): null;
+  const priceWithDiscount = item?.price
+    ? parseFloat(item?.price?.replace(/[^0-9.-]+/g, ""))
+    : null;
 
   const others = results.map((result) => {
     return { name: result.name, price: result.price, shop: result.shop };
@@ -319,7 +342,7 @@ const checkLowestPrice = (result) => {
 };
 
 const getPrices = async (answer, resultsPerShop) => {
-  const browser = await chromium.launch( );
+  const browser = await chromium.launch();
   const result = [];
 
   // Usa map y Promise.all para manejar correctamente las promesas
@@ -332,10 +355,10 @@ const getPrices = async (answer, resultsPerShop) => {
     })
   );
 
-    // const page = await browser.newPage();
-    // const info = await shops[0].getInfo(page, answer);
-    // result.push(...info.slice(0, resultsPerShop - 1)); // Usa spread operator para agregar elementos al arreglo
-    // await page.close(); // Asegúrate de cerrar la página después de usarla
+  // const page = await browser.newPage();
+  // const info = await shops[0].getInfo(page, answer);
+  // result.push(...info.slice(0, resultsPerShop - 1)); // Usa spread operator para agregar elementos al arreglo
+  // await page.close(); // Asegúrate de cerrar la página después de usarla
 
   await browser.close();
 
