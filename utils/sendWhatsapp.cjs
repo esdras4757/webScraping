@@ -61,37 +61,51 @@ function initializeClient() {
 initializeClient();
 
 async function sendMessage(number, message, img) {
-  if (!isClientReady) {
-    console.error("Client is not ready yet!");
-    return;
-  }
-
-  try {
-    const contacts = await client.getContacts();
-    const contact = contacts.find(({ number }) => number == number);
-    if (!contact) throw new Error("Contacto no encontrado");
-
-    const { id: { _serialized: chatId } } = contact;
-    
-    if (!img) {
-      await client.sendMessage(chatId, message);
-      console.log("Mensaje enviado con éxito a " + number);
+    if (!isClientReady) {
+      console.error("Client is not ready yet!");
       return;
     }
-
-    const response = await axios.get(img, { responseType: "arraybuffer" });
-    const imageBase64 = Buffer.from(response.data).toString("base64");
-    const media = new MessageMedia("image/jpeg", imageBase64);
-    
-    await client.sendMessage(chatId, media, { caption: message });
-    console.log("Mensaje con imagen enviado con éxito a " + number);
-  } catch (err) {
-    console.error("Error al enviar el mensaje:", err);
-    if (err.message.includes("Session closed") || err.message.includes("not ready")) {
-      console.log("Sesión cerrada, reiniciando...");
-      initializeClient();
+  
+    try {
+      // Convierte el número en el formato necesario
+      const contacts = await client.getContacts();
+      const contact = contacts.find(({ number }) => number == "5215564978543");
+      if (!contact) {
+        throw new Error("Contact not found");
+      }
+  
+      const {
+        id: { _serialized: chatId },
+      } = contact;
+      if (!img) {
+        // Envía el mensaje sin imagen
+        await client.sendMessage(chatId, message);
+        console.log("Mensaje enviado con éxito a " + number);
+        return;
+      }
+  
+      const response = await axios.get(img, { responseType: "arraybuffer" });
+      const imageBase64 = Buffer.from(response.data).toString("base64");
+  
+      const media = new MessageMedia("image/jpeg", imageBase64);
+  
+      // Envía el mensaje con la imagen
+      const responsewp = await client.sendMessage(chatId, media, {
+        caption: message,
+      });
+  
+      console.log("Mensaje enviado con éxito a " + number);
+    } catch (err) {
+      console.error("Error al enviar el mensaje: ", err);
+      if (
+        err.message.includes("Session closed") ||
+        err.message.includes("not ready") ||
+        err.message.includes("Evaluation failed")
+      ) {
+        console.log("Sesión cerrada, intentando reiniciar...");
+        initializeClient(); // Reiniciar el cliente en caso de error
+      }
     }
   }
-}
 
 module.exports = sendMessage;
